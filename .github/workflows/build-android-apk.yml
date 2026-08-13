@@ -8,6 +8,7 @@ on:
       - "android/**"
       - "app/**"
       - "public/**"
+      - "assets/android-icon/**"
       - "capacitor.config.ts"
       - "next.config.ts"
       - "package.json"
@@ -41,6 +42,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm android:init
+      - name: Apply launcher icon
+        run: |
+          for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            cp "assets/android-icon/${density}.png" "android/app/src/main/res/mipmap-${density}/ic_launcher.png"
+            cp "assets/android-icon/${density}.png" "android/app/src/main/res/mipmap-${density}/ic_launcher_round.png"
+          done
+          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
       - run: pnpm android:sync
       - run: ./gradlew assembleDebug
         working-directory: android
