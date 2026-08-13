@@ -132,11 +132,11 @@ function DayView({
 
   return (
     <div className="today-view">
+      <div className="day-sticky-header">
+        <h1>{isToday ? "today" : formatDayLabel(day, true)}</h1>
+        <p className="today-total"><span className="status-dot" />{formatClock(totalSeconds)} focused</p>
+      </div>
       <header className="today-header">
-        <div className="day-sticky-header">
-          <h1>{isToday ? "today" : formatDayLabel(day, true)}</h1>
-          <p className="today-total"><span className="status-dot" />{formatClock(totalSeconds)} focused</p>
-        </div>
         <p className="date-line day-date-line">{formatDayLabel(day, true)}</p>
         {!isToday && onBack && (
           <button className="overview-back" type="button" onClick={onBack}>
