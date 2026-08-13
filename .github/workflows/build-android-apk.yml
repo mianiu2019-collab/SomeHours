@@ -15,7 +15,7 @@ on:
       - ".github/workflows/build-android-apk.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -47,9 +47,21 @@ jobs:
       - run: ./gradlew assembleDebug
         working-directory: android
 
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk SomeHours.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: SomeHours-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish installable APK
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "android-build-${GITHUB_RUN_NUMBER}" SomeHours.apk \
+            --target "${GITHUB_SHA}" \
+            --title "SomeHours Android build ${GITHUB_RUN_NUMBER}" \
+            --notes "Installable debug-signed APK generated from commit ${GITHUB_SHA}."
