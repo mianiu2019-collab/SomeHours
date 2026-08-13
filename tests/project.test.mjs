@@ -37,3 +37,22 @@ test("keeps the focus timer product entry intact", async () => {
   assert.match(page, /OVERVIEW_SCALE_SECONDS/);
   assert.match(page, />overview</);
 });
+
+test("overview derives a continuous full history from FocusSession data", async () => {
+  const page = await readFile(new URL("app/page.tsx", root), "utf8");
+
+  assert.doesNotMatch(page, /OVERVIEW_DAYS/);
+  assert.match(page, /sessionStarts\.length === 0/);
+  assert.match(page, /for \(let day = todayStart; day >= firstDay; day = localDate\(day, -1\)\)/);
+});
+
+test("mobile layout uses the dynamic viewport without hatch edge borders", async () => {
+  const css = await readFile(new URL("app/globals.css", root), "utf8");
+  const focusSegment = css.match(/\.focus-segment\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+  const overviewSegment = css.match(/\.day-trace-fill\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+
+  assert.match(css, /height:\s*100dvh/);
+  assert.match(css, /height:\s*100%/);
+  assert.doesNotMatch(focusSegment, /border-(?:left|right)/);
+  assert.doesNotMatch(overviewSegment, /border-(?:left|right)/);
+});

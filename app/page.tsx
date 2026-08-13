@@ -17,7 +17,6 @@ type Theme = "light" | "dark";
 const SESSIONS_KEY = "minimal-focus-timer:sessions";
 const ACTIVE_KEY = "minimal-focus-timer:active-start";
 const THEME_KEY = "minimal-focus-timer:theme";
-const OVERVIEW_DAYS = 14;
 const OVERVIEW_SCALE_SECONDS = 8 * 60 * 60;
 
 function dateKey(value: Date) {
@@ -197,32 +196,36 @@ function Overview({
   return (
     <div className="overview-view">
       <header className="overview-header">
-        <p className="date-line">recent / {OVERVIEW_DAYS} days</p>
+        <p className="date-line">daily / history</p>
         <h1>overview</h1>
       </header>
-      <div className="daily-log" aria-label="最近十四天每日专注时长">
-        {days.map((day) => {
-          const seconds = mergedDuration(intervalsForDay(sessions, activeStart, now, day)) / 1000;
-          const width = Math.min(100, (seconds / OVERVIEW_SCALE_SECONDS) * 100);
-          const key = dateKey(day);
-          return (
-            <button
-              className={`day-row ${seconds === 0 ? "zero-day" : ""}`}
-              type="button"
-              key={key}
-              onClick={() => onSelect(day)}
-              aria-label={`${formatDayLabel(day)}, 专注 ${formatClock(seconds)}`}
-            >
-              <span className="day-label">{formatDayLabel(day)}</span>
-              <span className="day-trace" aria-hidden="true">
-                {seconds > 0 && <span className="day-trace-fill" style={{ width: `${width}%` }} />}
-              </span>
-              <span className="day-duration">{formatHoursMinutes(seconds)}</span>
-            </button>
-          );
-        })}
-      </div>
-      <p className="overview-scale">trace / 8h</p>
+      {days.length === 0 ? (
+        <p className="overview-empty">no focus sessions yet</p>
+      ) : (
+        <div className="daily-log" aria-label="全部历史每日专注时长">
+          {days.map((day) => {
+            const seconds = mergedDuration(intervalsForDay(sessions, activeStart, now, day)) / 1000;
+            const width = Math.min(100, (seconds / OVERVIEW_SCALE_SECONDS) * 100);
+            const key = dateKey(day);
+            return (
+              <button
+                className={`day-row ${seconds === 0 ? "zero-day" : ""}`}
+                type="button"
+                key={key}
+                onClick={() => onSelect(day)}
+                aria-label={`${formatDayLabel(day)}, 专注 ${formatClock(seconds)}`}
+              >
+                <span className="day-label">{formatDayLabel(day)}</span>
+                <span className="day-trace" aria-hidden="true">
+                  {seconds > 0 && <span className="day-trace-fill" style={{ width: `${width}%` }} />}
+                </span>
+                <span className="day-duration">{formatHoursMinutes(seconds)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {days.length > 0 && <p className="overview-scale">trace / 8h</p>}
     </div>
   );
 }
@@ -236,10 +239,23 @@ export default function Home() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const today = useMemo(() => new Date(now), [now]);
-  const overviewDays = useMemo(
-    () => Array.from({ length: OVERVIEW_DAYS }, (_, index) => localDate(today, -index)),
-    [today],
-  );
+  const overviewDays = useMemo(() => {
+    const sessionStarts = sessions
+      .map((session) => new Date(session.startTime).getTime())
+      .filter(Number.isFinite);
+    if (sessionStarts.length === 0) return [];
+
+    const todayStart = localDate(today);
+    const earliestStart = new Date(sessionStarts.reduce((earliest, start) => Math.min(earliest, start)));
+    const earliestDay = localDate(earliestStart);
+    const firstDay = earliestDay > todayStart ? todayStart : earliestDay;
+    const days: Date[] = [];
+
+    for (let day = todayStart; day >= firstDay; day = localDate(day, -1)) {
+      days.push(day);
+    }
+    return days;
+  }, [sessions, today]);
 
   useEffect(() => {
     try {
