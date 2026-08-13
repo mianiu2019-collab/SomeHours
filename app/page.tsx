@@ -11,12 +11,14 @@ type FocusSession = {
   date: string;
 };
 
-type View = "focus" | "today";
+type View = "focus" | "today" | "overview" | "day";
 type Theme = "light" | "dark";
 
 const SESSIONS_KEY = "minimal-focus-timer:sessions";
 const ACTIVE_KEY = "minimal-focus-timer:active-start";
 const THEME_KEY = "minimal-focus-timer:theme";
+const OVERVIEW_DAYS = 14;
+const OVERVIEW_SCALE_SECONDS = 8 * 60 * 60;
 
 function dateKey(value: Date) {
   const year = value.getFullYear();
@@ -27,7 +29,12 @@ function dateKey(value: Date) {
 
 function dayBounds(value: Date) {
   const start = new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
-  return { start, end: start + 24 * 60 * 60 * 1000 };
+  const end = new Date(value.getFullYear(), value.getMonth(), value.getDate() + 1).getTime();
+  return { start, end };
+}
+
+function localDate(value: Date, offset = 0) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate() + offset);
 }
 
 function formatClock(seconds: number) {
@@ -36,6 +43,21 @@ function formatClock(seconds: number) {
   const minutes = String(Math.floor((safe % 3600) / 60)).padStart(2, "0");
   const secs = String(safe % 60).padStart(2, "0");
   return `${hours}:${minutes}:${secs}`;
+}
+
+function formatHoursMinutes(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const hours = String(Math.floor(safe / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((safe % 3600) / 60)).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function formatDayLabel(day: Date, includeWeekday = false) {
+  return day.toLocaleDateString("en-US", {
+    ...(includeWeekday ? { weekday: "short" as const } : {}),
+    month: "short",
+    day: "numeric",
+  }).toLowerCase().replace(",", " / ");
 }
 
 function mergedDuration(intervals: Array<[number, number]>) {
@@ -90,6 +112,121 @@ function intervalsForDay(
     .filter(([start, end]) => end > start);
 }
 
+function DayView({
+  day,
+  sessions,
+  activeStart,
+  now,
+  isToday,
+  onBack,
+}: {
+  day: Date;
+  sessions: FocusSession[];
+  activeStart: string | null;
+  now: number;
+  isToday: boolean;
+  onBack?: () => void;
+}) {
+  const intervals = intervalsForDay(sessions, activeStart, now, day);
+  const totalSeconds = mergedDuration(intervals) / 1000;
+  const bounds = dayBounds(day);
+
+  return (
+    <div className="today-view">
+      <header className="today-header">
+        <p className="date-line">{formatDayLabel(day, true)}</p>
+        <h1>{isToday ? "today" : "day log"}</h1>
+        <p className="today-total"><span className="status-dot" />{formatClock(totalSeconds)} focused</p>
+        {!isToday && onBack && (
+          <button className="overview-back" type="button" onClick={onBack}>
+            &gt; overview
+          </button>
+        )}
+      </header>
+      <div className="time-map" aria-label={`${formatDayLabel(day)}每小时的真实专注分布`}>
+        {Array.from({ length: 24 }, (_, hour) => {
+          const hourStart = bounds.start + hour * 60 * 60 * 1000;
+          const hourEnd = hourStart + 60 * 60 * 1000;
+          const segments = mergedIntervals(
+            intervals
+              .map(([start, end]) => [Math.max(start, hourStart), Math.min(end, hourEnd)] as [number, number])
+              .filter(([start, end]) => end > start),
+          );
+          return (
+            <div className={`hour-row ${hour < 6 ? "quiet-hour" : ""}`} key={hour}>
+              <span className="hour-label">{String(hour).padStart(2, "0")}</span>
+              <div className="hour-track">
+                {segments.map(([start, end], index) => {
+                  const left = ((start - hourStart) / (60 * 60 * 1000)) * 100;
+                  const width = ((end - start) / (60 * 60 * 1000)) * 100;
+                  const startMinute = Math.floor((start - hourStart) / 60000);
+                  const endMinute = Math.min(60, Math.ceil((end - hourStart) / 60000));
+                  return (
+                    <span
+                      className="focus-segment"
+                      key={`${start}-${end}-${index}`}
+                      style={{ left: `${left}%`, width: `${width}%` }}
+                      title={`${String(hour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}–${String(hour + (endMinute === 60 ? 1 : 0)).padStart(2, "0")}:${String(endMinute % 60).padStart(2, "0")}`}
+                      aria-label={`${hour}点${startMinute}分至${endMinute === 60 ? `${hour + 1}点` : `${endMinute}分`}专注`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="today-footer">total / {formatClock(totalSeconds)}</p>
+    </div>
+  );
+}
+
+function Overview({
+  days,
+  sessions,
+  activeStart,
+  now,
+  onSelect,
+}: {
+  days: Date[];
+  sessions: FocusSession[];
+  activeStart: string | null;
+  now: number;
+  onSelect: (day: Date) => void;
+}) {
+  return (
+    <div className="overview-view">
+      <header className="overview-header">
+        <p className="date-line">recent / {OVERVIEW_DAYS} days</p>
+        <h1>overview</h1>
+      </header>
+      <div className="daily-log" aria-label="最近十四天每日专注时长">
+        {days.map((day) => {
+          const seconds = mergedDuration(intervalsForDay(sessions, activeStart, now, day)) / 1000;
+          const width = Math.min(100, (seconds / OVERVIEW_SCALE_SECONDS) * 100);
+          const key = dateKey(day);
+          return (
+            <button
+              className={`day-row ${seconds === 0 ? "zero-day" : ""}`}
+              type="button"
+              key={key}
+              onClick={() => onSelect(day)}
+              aria-label={`${formatDayLabel(day)}, 专注 ${formatClock(seconds)}`}
+            >
+              <span className="day-label">{formatDayLabel(day)}</span>
+              <span className="day-trace" aria-hidden="true">
+                {seconds > 0 && <span className="day-trace-fill" style={{ width: `${width}%` }} />}
+              </span>
+              <span className="day-duration">{formatHoursMinutes(seconds)}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="overview-scale">trace / 8h</p>
+    </div>
+  );
+}
+
 export default function Home() {
   const [view, setView] = useState<View>("focus");
   const [sessions, setSessions] = useState<FocusSession[]>([]);
@@ -97,7 +234,12 @@ export default function Home() {
   const [now, setNow] = useState(() => Date.now());
   const [ready, setReady] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const today = useMemo(() => new Date(now), [now]);
+  const overviewDays = useMemo(
+    () => Array.from({ length: OVERVIEW_DAYS }, (_, index) => localDate(today, -index)),
+    [today],
+  );
 
   useEffect(() => {
     try {
@@ -204,51 +346,28 @@ export default function Home() {
               </button>
             </div>
           )
+        ) : view === "today" ? (
+          <DayView day={today} sessions={sessions} activeStart={activeStart} now={now} isToday />
+        ) : view === "day" && selectedDay ? (
+          <DayView
+            day={selectedDay}
+            sessions={sessions}
+            activeStart={activeStart}
+            now={now}
+            isToday={dateKey(selectedDay) === dateKey(today)}
+            onBack={() => setView("overview")}
+          />
         ) : (
-          <div className="today-view">
-            <header className="today-header">
-              <p className="date-line">
-                {today.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }).toLowerCase().replace(",", " / ")}
-              </p>
-              <h1>today</h1>
-              <p className="today-total"><span className="status-dot" />{formatClock(todaySeconds)} focused</p>
-            </header>
-            <div className="time-map" aria-label="今天每小时的真实专注分布">
-              {Array.from({ length: 24 }, (_, hour) => {
-                const bounds = dayBounds(today);
-                const hourStart = bounds.start + hour * 60 * 60 * 1000;
-                const hourEnd = hourStart + 60 * 60 * 1000;
-                const segments = mergedIntervals(
-                  dayIntervals
-                    .map(([start, end]) => [Math.max(start, hourStart), Math.min(end, hourEnd)] as [number, number])
-                    .filter(([start, end]) => end > start),
-                );
-                return (
-                  <div className={`hour-row ${hour < 6 ? "quiet-hour" : ""}`} key={hour}>
-                    <span className="hour-label">{String(hour).padStart(2, "0")}</span>
-                    <div className="hour-track">
-                      {segments.map(([start, end], index) => {
-                        const left = ((start - hourStart) / (60 * 60 * 1000)) * 100;
-                        const width = ((end - start) / (60 * 60 * 1000)) * 100;
-                        const startMinute = Math.floor((start - hourStart) / 60000);
-                        const endMinute = Math.min(60, Math.ceil((end - hourStart) / 60000));
-                        return (
-                        <span
-                          className="focus-segment"
-                          key={`${start}-${end}-${index}`}
-                          style={{ left: `${left}%`, width: `${width}%` }}
-                          title={`${String(hour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}–${String(hour + (endMinute === 60 ? 1 : 0)).padStart(2, "0")}:${String(endMinute % 60).padStart(2, "0")}`}
-                          aria-label={`${hour}点${startMinute}分至${endMinute === 60 ? `${hour + 1}点` : `${endMinute}分`}专注`}
-                        />
-                      );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="today-footer">total / {formatClock(todaySeconds)}</p>
-          </div>
+          <Overview
+            days={overviewDays}
+            sessions={sessions}
+            activeStart={activeStart}
+            now={now}
+            onSelect={(day) => {
+              setSelectedDay(day);
+              setView("day");
+            }}
+          />
         )}
 
         {!(activeStart && view === "focus") && (
@@ -263,9 +382,19 @@ export default function Home() {
             <button
               className={view === "today" ? "active" : ""}
               type="button"
-              onClick={() => setView("today")}
+              onClick={() => {
+                setSelectedDay(null);
+                setView("today");
+              }}
             >
               today
+            </button>
+            <button
+              className={view === "overview" || view === "day" ? "active" : ""}
+              type="button"
+              onClick={() => setView("overview")}
+            >
+              overview
             </button>
           </nav>
         )}

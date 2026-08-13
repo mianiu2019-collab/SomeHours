@@ -32,4 +32,8 @@ test("keeps the focus timer product entry intact", async () => {
   assert.match(page, /&gt; start focus/);
   assert.match(page, /&gt; stop/);
   assert.match(page, /className="hour-track"/);
+  assert.match(page, /function DayView/);
+  assert.match(page, /function Overview/);
+  assert.match(page, /OVERVIEW_SCALE_SECONDS/);
+  assert.match(page, />overview</);
 });
