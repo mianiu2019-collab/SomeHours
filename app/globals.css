@@ -282,7 +282,16 @@ h1 {
 }
 
 .today-view::-webkit-scrollbar { display: none; }
-.today-header { margin-bottom: 42px; }
+.today-header { display: contents; }
+
+.day-sticky-header {
+  position: sticky;
+  z-index: 4;
+  top: 0;
+  background: var(--surface);
+}
+
+.today-header + .time-map { margin-top: 42px; }
 
 .overview-back {
   min-height: 44px;
@@ -571,6 +580,10 @@ h1 {
     padding-right: calc(38px + var(--safe-right));
     padding-bottom: calc(126px + var(--safe-bottom));
     padding-left: calc(38px + var(--safe-left));
+  }
+
+  .day-sticky-header {
+    top: var(--safe-top);
   }
 
   .overview-view {

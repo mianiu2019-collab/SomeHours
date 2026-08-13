@@ -56,3 +56,14 @@ test("mobile layout uses the dynamic viewport without hatch edge borders", async
   assert.doesNotMatch(focusSegment, /border-(?:left|right)/);
   assert.doesNotMatch(overviewSegment, /border-(?:left|right)/);
 });
+
+test("day views keep only their title and focused total sticky", async () => {
+  const page = await readFile(new URL("app/page.tsx", root), "utf8");
+  const css = await readFile(new URL("app/globals.css", root), "utf8");
+
+  assert.match(page, /className="day-sticky-header"/);
+  assert.match(page, /isToday \? "today" : formatDayLabel\(day, true\)/);
+  assert.match(css, /\.day-sticky-header\s*\{[\s\S]*?position:\s*sticky/);
+  assert.match(css, /\.day-sticky-header\s*\{[\s\S]*?top:\s*var\(--safe-top\)/);
+  assert.doesNotMatch(css, /\.day-sticky-header\s*\{[\s\S]*?position:\s*fixed/);
+});
