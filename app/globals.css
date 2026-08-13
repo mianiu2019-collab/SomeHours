@@ -278,7 +278,7 @@ h1 {
 .today-view {
   overflow-y: auto;
   scrollbar-width: none;
-  padding: 54px 38px 126px;
+  padding: 0 38px 126px;
 }
 
 .today-view::-webkit-scrollbar { display: none; }
@@ -287,10 +287,16 @@ h1 {
   position: sticky;
   z-index: 4;
   top: 0;
-  margin: -54px -38px 0;
-  padding: 54px 38px 20px;
+  margin: 0 -38px;
+  padding: 42px 38px 20px;
   background: var(--surface);
   isolation: isolate;
+}
+
+.day-sticky-header h1 {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
 }
 
 .day-date-line { margin-top: 20px; }
@@ -579,17 +585,17 @@ h1 {
   }
 
   .today-view {
-    padding-top: calc(54px + var(--safe-top));
+    padding-top: 0;
     padding-right: calc(38px + var(--safe-right));
     padding-bottom: calc(126px + var(--safe-bottom));
     padding-left: calc(38px + var(--safe-left));
   }
 
   .day-sticky-header {
-    margin-top: calc(-54px - var(--safe-top));
+    margin-top: 0;
     margin-right: calc(-38px - var(--safe-right));
     margin-left: calc(-38px - var(--safe-left));
-    padding-top: calc(54px + var(--safe-top));
+    padding-top: calc(42px + var(--safe-top));
     padding-right: calc(38px + var(--safe-right));
     padding-left: calc(38px + var(--safe-left));
   }
