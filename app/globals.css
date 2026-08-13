@@ -288,9 +288,13 @@ h1 {
   position: sticky;
   z-index: 4;
   top: 0;
+  margin: -54px -38px 0;
+  padding: 54px 38px 20px;
   background: var(--surface);
+  isolation: isolate;
 }
 
+.day-date-line { margin-top: 20px; }
 .today-header + .time-map { margin-top: 42px; }
 
 .overview-back {
@@ -583,7 +587,12 @@ h1 {
   }
 
   .day-sticky-header {
-    top: var(--safe-top);
+    margin-top: calc(-54px - var(--safe-top));
+    margin-right: calc(-38px - var(--safe-right));
+    margin-left: calc(-38px - var(--safe-left));
+    padding-top: calc(54px + var(--safe-top));
+    padding-right: calc(38px + var(--safe-right));
+    padding-left: calc(38px + var(--safe-left));
   }
 
   .overview-view {

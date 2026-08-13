@@ -13,11 +13,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "静时 · 极简专注计时器",
+  title: "Some Hours",
+  applicationName: "Some Hours",
   description: "记录今天真正专注的时间。",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Some Hours",
+  },
+  openGraph: {
+    title: "Some Hours",
+    description: "记录今天真正专注的时间。",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Some Hours",
+    description: "记录今天真正专注的时间。",
+  },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: [
+      { url: "/some-hours-icon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/some-hours-icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/some-hours-icon-48.png", sizes: "48x48", type: "image/png" },
+    ],
+    shortcut: "/some-hours-favicon.ico",
+    apple: [{ url: "/some-hours-apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

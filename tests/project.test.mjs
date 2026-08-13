@@ -9,7 +9,10 @@ test("has the required Next.js App Router entry files", async () => {
     access(new URL("app/layout.tsx", root)),
     access(new URL("app/page.tsx", root)),
     access(new URL("app/globals.css", root)),
-    access(new URL("public/favicon.svg", root)),
+    access(new URL("app/manifest.ts", root)),
+    access(new URL("public/some-hours-icon-192.png", root)),
+    access(new URL("public/some-hours-icon-512.png", root)),
+    access(new URL("public/some-hours-apple-touch-icon.png", root)),
   ]);
 });
 
@@ -64,6 +67,22 @@ test("day views keep only their title and focused total sticky", async () => {
   assert.match(page, /className="day-sticky-header"/);
   assert.match(page, /isToday \? "today" : formatDayLabel\(day, true\)/);
   assert.match(css, /\.day-sticky-header\s*\{[\s\S]*?position:\s*sticky/);
-  assert.match(css, /\.day-sticky-header\s*\{[\s\S]*?top:\s*var\(--safe-top\)/);
+  assert.match(css, /\.day-sticky-header\s*\{[\s\S]*?top:\s*0/);
+  assert.match(css, /margin-top:\s*calc\(-54px - var\(--safe-top\)\)/);
+  assert.match(css, /background:\s*var\(--surface\)/);
   assert.doesNotMatch(css, /\.day-sticky-header\s*\{[\s\S]*?position:\s*fixed/);
+});
+
+test("uses Some Hours metadata and install icons", async () => {
+  const layout = await readFile(new URL("app/layout.tsx", root), "utf8");
+  const manifest = await readFile(new URL("app/manifest.ts", root), "utf8");
+
+  assert.doesNotMatch(layout, /静时/);
+  assert.match(layout, /title:\s*"Some Hours"/);
+  assert.match(layout, /applicationName:\s*"Some Hours"/);
+  assert.match(layout, /appleWebApp:[\s\S]*?title:\s*"Some Hours"/);
+  assert.match(manifest, /name:\s*"Some Hours"/);
+  assert.match(manifest, /short_name:\s*"Some Hours"/);
+  assert.match(manifest, /some-hours-icon-192\.png/);
+  assert.match(manifest, /some-hours-icon-512\.png/);
 });
